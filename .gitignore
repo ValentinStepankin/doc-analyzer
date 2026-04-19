@@ -1,0 +1,19 @@
+# Virtual environment
+.venv/
+
+# Database and runtime data
+project/data/index.db
+project/data/logs/
+project/data/export/
+project/data/_scan.pid
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Temp files
+*.tmp

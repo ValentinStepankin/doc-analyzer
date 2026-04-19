@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html class="dark" lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Archive | doc-analyzer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "on-tertiary-container": "#5f2a00",
+          "secondary-container": "#bd8708",
+          "on-primary": "#00390d",
+          "error": "#ffb4ab",
+          "on-secondary": "#422c00",
+          "surface-container-lowest": "#0a0e14",
+          "on-surface-variant": "#bdcab8",
+          "background": "#10141a",
+          "inverse-on-surface": "#2d3137",
+          "surface-variant": "#31353c",
+          "secondary-fixed-dim": "#fabc45",
+          "surface-bright": "#353940",
+          "surface-container-low": "#181c22",
+          "on-tertiary-fixed": "#311300",
+          "tertiary": "#ffb689",
+          "surface-container-highest": "#31353c",
+          "on-secondary-fixed": "#271900",
+          "tertiary-fixed-dim": "#ffb689",
+          "on-primary-fixed-variant": "#005317",
+          "error-container": "#93000a",
+          "primary-fixed-dim": "#67df70",
+          "on-surface": "#dfe2eb",
+          "on-error-container": "#ffdad6",
+          "surface-tint": "#67df70",
+          "outline": "#879484",
+          "on-primary-container": "#004311",
+          "on-background": "#dfe2eb",
+          "on-secondary-container": "#392600",
+          "primary": "#67df70",
+          "surface-container": "#1c2026",
+          "surface": "#10141a",
+          "outline-variant": "#3e4a3c",
+          "on-primary-fixed": "#002105",
+          "primary-fixed": "#83fc89",
+          "on-tertiary": "#512300",
+          "on-error": "#690005",
+          "on-secondary-fixed-variant": "#5f4100",
+          "secondary": "#fabc45",
+          "surface-dim": "#10141a",
+          "inverse-primary": "#006e21",
+          "tertiary-fixed": "#ffdbc8",
+          "primary-container": "#3fb950",
+          "secondary-fixed": "#ffdeaa",
+          "inverse-surface": "#dfe2eb",
+          "tertiary-container": "#f0883e",
+          "surface-container-high": "#262a31"
+        },
+        borderRadius: {
+          sm:      "0.375rem",
+          DEFAULT: "0.5rem",
+          lg:      "0.75rem",
+          xl:      "1rem",
+          "2xl":   "1.25rem",
+          full:    "9999px"
+        },
+        fontFamily: {
+          headline: ["-apple-system", "BlinkMacSystemFont", "Manrope", "Inter", "sans-serif"],
+          body:     ["-apple-system", "BlinkMacSystemFont", "Inter", "Segoe UI", "sans-serif"],
+          label:    ["-apple-system", "BlinkMacSystemFont", "Inter", "Segoe UI", "sans-serif"]
+        }
+      }
+    }
+  }
+</script>
+<style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  /* Font smoothing — macOS style */
+  body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+  /* Checkbox/radio accent color */
+  input[type="checkbox"], input[type="radio"] { accent-color: #3fb950; }
+
+  /* Custom select dropdown */
+  .csel { position: relative; display: inline-block; }
+  .csel-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: #1c2026; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+    padding: 5px 10px 5px 12px; color: #dfe2eb;
+    font-size: 12px; cursor: pointer; white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .csel-btn:hover { background: #262a31; border-color: rgba(255,255,255,0.14); }
+  .csel-arrow { transition: transform 0.2s; font-size: 14px !important; line-height: 1 !important; }
+  .csel.open .csel-arrow { transform: rotate(180deg); }
+  .csel-menu {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 100%; z-index: 200;
+    background: #262a31;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+    overflow: hidden;
+    opacity: 0; transform: translateY(-6px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: none;
+  }
+  .csel.open .csel-menu { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .csel-opt {
+    padding: 8px 14px; font-size: 12px;
+    color: #dfe2eb; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: background 0.1s;
+  }
+  .csel-opt:hover { background: rgba(255,255,255,0.06); }
+  .csel-opt::before { content: ''; display: inline-block; width: 12px; font-size: 11px; }
+  .csel-opt.selected { color: #3fb950; }
+  .csel-opt.selected::before { content: '✓'; }
+  .csel-up .csel-menu { top: auto; bottom: calc(100% + 6px); transform: translateY(4px); }
+  .csel-up.open .csel-menu { transform: translateY(0); }
+
+  /* Export filter cards */
+  .export-card { display:flex; align-items:center; gap:12px; padding:11px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.07); background:#1a1e24; cursor:pointer; transition:background 0.15s, border-color 0.15s; }
+  .export-card:hover { background:#20252c; border-color:rgba(255,255,255,0.14); }
+  .export-card:has(input:checked) { background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.22); }
+
+  /* Action modal */
+  .action-modal-opt:hover { background: rgba(255,255,255,0.05); }
+  #action-modal.open { display: flex; }
+
+  /* macOS overlay scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.18);
+    background-clip: content-box;
+  }
+
+  /* Glass panels — sidebar, headers, footers */
+  .glass        { background: rgba(24,28,34,0.78); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  .glass-header { background: rgba(16,20,26,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  .glass-panel  { background: rgba(22,26,32,0.95); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); }
+
+  .no-border-input:focus { outline: none; box-shadow: none; border-color: transparent; }
+  @keyframes spin-slow { to { transform: rotate(360deg); } }
+  .spin-slow { animation: spin-slow 1.5s linear infinite; }
+  .view { display: none !important; }
+  .view.active { display: block !important; }
+  #view-results.active { display: flex !important; }
+  #detail-panel { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+
+  /* Subtle press feedback for buttons */
+  button:active:not(:disabled) { transform: scale(0.98); transition: transform 0.08s; }
+
+  /* Thinner dividers, macOS style */
+  .divide-y > * + * { border-top-width: 0.5px; }
+</style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+
+<!-- ═══ SIDEBAR ════════════════════════════════════════════════════════════ -->
+<aside class="w-[220px] h-screen fixed left-0 top-0 flex flex-col py-6 px-4 z-50 glass border-r border-white/[0.04]">
+  <div class="mb-8 px-2">
+    <h1 class="text-lg font-bold text-on-surface tracking-widest uppercase font-headline">The Archive</h1>
+    <p class="text-[10px] text-on-surface-variant tracking-[0.2em] font-medium">doc-analyzer</p>
+  </div>
+
+  <nav class="flex-1 flex flex-col gap-1 text-sm">
+    <a data-view="overview" onclick="navigate('overview')" class="nav-item flex items-center gap-3 py-2 px-3 rounded-xl cursor-pointer transition-colors duration-150">
+      <span class="material-symbols-outlined text-lg">dashboard</span> Обзор
+    </a>
+    <a data-view="results" onclick="navigate('results')" class="nav-item flex items-center gap-3 py-2 px-3 rounded-xl cursor-pointer transition-colors duration-150">
+      <span class="material-symbols-outlined text-lg">analytics</span> Результаты
+    </a>
+    <a data-view="scan" onclick="navigate('scan')" class="nav-item flex items-center gap-3 py-2 px-3 rounded-xl cursor-pointer transition-colors duration-150">
+      <span class="material-symbols-outlined text-lg">document_scanner</span> Сканирование
+    </a>
+    <a data-view="export" onclick="navigate('export')" class="nav-item flex items-center gap-3 py-2 px-3 rounded-xl cursor-pointer transition-colors duration-150">
+      <span class="material-symbols-outlined text-lg">ios_share</span> Экспорт
+    </a>
+  </nav>
+
+  <div class="mt-auto pt-4 border-t border-outline-variant/10 px-2">
+    <div class="flex items-center gap-2">
+      <span id="ollama-dot" class="material-symbols-outlined text-[12px]" style="font-variation-settings:'FILL' 1;color:#879484">circle</span>
+      <span id="ollama-label" class="text-[10px] font-medium uppercase tracking-tighter text-on-surface-variant">Ollama: проверка...</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══════════════════════════════════════════════════════════════ -->
+<main class="ml-[220px] min-h-screen flex flex-col">
+
+  <!-- ── VIEW: OVERVIEW ──────────────────────────────────────────────────── -->
+  <div id="view-overview" class="view">
+    <!-- Header bar -->
+    <header class="fixed top-0 right-0 w-[calc(100%-220px)] h-16 flex items-center px-8 glass-header z-40 border-b border-white/[0.04]">
+      <h2 class="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Обзор</h2>
+    </header>
+
+    <div class="pt-20 px-8 pb-8 space-y-6">
+      <!-- Stat cards -->
+      <div id="stat-cards" class="grid grid-cols-4 gap-4">
+        <!-- filled by JS -->
+        <div class="bg-surface-container rounded-xl p-5 h-24 animate-pulse"></div>
+        <div class="bg-surface-container rounded-xl p-5 h-24 animate-pulse"></div>
+        <div class="bg-surface-container rounded-xl p-5 h-24 animate-pulse"></div>
+        <div class="bg-surface-container rounded-xl p-5 h-24 animate-pulse"></div>
+      </div>
+
+      <!-- Active scan banner -->
+      <div id="scan-banner" class="hidden"></div>
+
+      <!-- Distribution grid -->
+      <div class="grid grid-cols-2 gap-6">
+        <div id="dist-categories" class="bg-surface-container rounded-xl p-5 min-h-[160px]">
+          <div class="h-2 w-24 bg-surface-container-high rounded animate-pulse mb-4"></div>
+          <div class="space-y-3">
+            <div class="h-2 bg-surface-container-high rounded animate-pulse"></div>
+            <div class="h-2 bg-surface-container-high rounded animate-pulse w-4/5"></div>
+            <div class="h-2 bg-surface-container-high rounded animate-pulse w-3/5"></div>
+          </div>
+        </div>
+        <div id="dist-actions" class="bg-surface-container rounded-xl p-5 min-h-[160px]">
+          <div class="h-2 w-24 bg-surface-container-high rounded animate-pulse mb-4"></div>
+          <div class="space-y-3">
+            <div class="h-2 bg-surface-container-high rounded animate-pulse"></div>
+            <div class="h-2 bg-surface-container-high rounded animate-pulse w-4/5"></div>
+            <div class="h-2 bg-surface-container-high rounded animate-pulse w-3/5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent files -->
+      <div>
+        <h2 class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Последние обработанные</h2>
+        <div id="recent-files" class="bg-surface-container rounded-xl overflow-hidden">
+          <div class="py-10 text-center text-on-surface-variant text-sm">Загрузка...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VIEW: RESULTS ───────────────────────────────────────────────────── -->
+  <div id="view-results" class="view flex flex-col min-h-screen">
+    <!-- Fixed search header -->
+    <header class="fixed top-0 right-0 w-[calc(100%-220px)] h-16 flex items-center justify-between px-8 glass-header z-40 border-b border-white/[0.04]">
+      <div class="flex-1 max-w-2xl">
+        <div class="flex items-center bg-surface-container rounded-xl px-4 h-10 group transition-all duration-200 focus-within:ring-1 focus-within:ring-primary/30">
+          <span class="material-symbols-outlined text-on-surface-variant text-lg group-focus-within:text-primary">search</span>
+          <input id="search-input" class="bg-transparent border-none text-sm w-full no-border-input placeholder:text-on-surface-variant/50 focus:ring-0 px-3" placeholder="Введите название файла или ключевые слова" type="text"/>
+          <button onclick="doSearch()" class="bg-primary-container text-on-primary-container text-xs font-bold px-3 py-1 rounded transition-transform active:scale-95">Найти</button>
+        </div>
+      </div>
+      <div id="bulk-actions" class="hidden items-center gap-3 ml-6">
+        <span id="bulk-count" class="text-xs text-on-surface-variant"></span>
+        <button onclick="reprocessSelected()" class="flex items-center gap-1.5 text-xs bg-surface-container px-3 py-1.5 rounded hover:bg-surface-container-highest transition-colors">
+          <span class="material-symbols-outlined text-sm">refresh</span> Переобработать
+        </button>
+      </div>
+    </header>
+
+    <!-- Filter row -->
+    <section class="mt-16 px-8 py-3 glass-header border-b border-white/[0.04] sticky top-16 z-30">
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Рекомендация</span>
+          <div class="csel" id="filter-action" data-value="">
+            <button class="csel-btn" type="button" onclick="toggleCsel(event,'filter-action')">
+              <span class="csel-label">Все</span>
+              <span class="material-symbols-outlined csel-arrow">expand_more</span>
+            </button>
+            <div class="csel-menu">
+              <div class="csel-opt selected" data-value="" onclick="pickCsel('filter-action','','Все')">Все</div>
+              <div class="csel-opt" data-value="keep" onclick="pickCsel('filter-action','keep','Хранить')">Хранить</div>
+              <div class="csel-opt" data-value="archive" onclick="pickCsel('filter-action','archive','Архив')">Архив</div>
+              <div class="csel-opt" data-value="review" onclick="pickCsel('filter-action','review','На проверку')">На проверку</div>
+              <div class="csel-opt" data-value="trash_candidate" onclick="pickCsel('filter-action','trash_candidate','Мусор')">Мусор</div>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Категория</span>
+          <div class="csel" id="filter-category" data-value="">
+            <button class="csel-btn" type="button" onclick="toggleCsel(event,'filter-category')">
+              <span class="csel-label">Все</span>
+              <span class="material-symbols-outlined csel-arrow">expand_more</span>
+            </button>
+            <div class="csel-menu">
+              <div class="csel-opt selected" data-value="" onclick="pickCsel('filter-category','','Все')">Все</div>
+              <div class="csel-opt" data-value="договор" onclick="pickCsel('filter-category','договор','договор')">договор</div>
+              <div class="csel-opt" data-value="личное" onclick="pickCsel('filter-category','личное','личное')">личное</div>
+              <div class="csel-opt" data-value="рабочий материал" onclick="pickCsel('filter-category','рабочий материал','рабочий материал')">рабочий материал</div>
+              <div class="csel-opt" data-value="черновик" onclick="pickCsel('filter-category','черновик','черновик')">черновик</div>
+              <div class="csel-opt" data-value="мусор" onclick="pickCsel('filter-category','мусор','мусор')">мусор</div>
+              <div class="csel-opt" data-value="дубликат" onclick="pickCsel('filter-category','дубликат','дубликат')">дубликат</div>
+              <div class="csel-opt" data-value="фото-документ" onclick="pickCsel('filter-category','фото-документ','фото-документ')">фото-документ</div>
+              <div class="csel-opt" data-value="фото-сцена" onclick="pickCsel('filter-category','фото-сцена','фото-сцена')">фото-сцена</div>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Тип файла</span>
+          <div class="csel" id="filter-ext" data-value="">
+            <button class="csel-btn" type="button" onclick="toggleCsel(event,'filter-ext')">
+              <span class="csel-label">Любой</span>
+              <span class="material-symbols-outlined csel-arrow">expand_more</span>
+            </button>
+            <div class="csel-menu">
+              <div class="csel-opt selected" data-value="" onclick="pickCsel('filter-ext','','Любой')">Любой</div>
+              <div class="csel-opt" data-value="pdf" onclick="pickCsel('filter-ext','pdf','pdf')">pdf</div>
+              <div class="csel-opt" data-value="docx" onclick="pickCsel('filter-ext','docx','docx')">docx</div>
+              <div class="csel-opt" data-value="txt" onclick="pickCsel('filter-ext','txt','txt')">txt</div>
+              <div class="csel-opt" data-value="jpg" onclick="pickCsel('filter-ext','jpg','jpg')">jpg</div>
+              <div class="csel-opt" data-value="jpeg" onclick="pickCsel('filter-ext','jpeg','jpeg')">jpeg</div>
+              <div class="csel-opt" data-value="png" onclick="pickCsel('filter-ext','png','png')">png</div>
+              <div class="csel-opt" data-value="pptx" onclick="pickCsel('filter-ext','pptx','pptx')">pptx</div>
+              <div class="csel-opt" data-value="html" onclick="pickCsel('filter-ext','html','html')">html</div>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Статус</span>
+          <div class="csel" id="filter-status" data-value="">
+            <button class="csel-btn" type="button" onclick="toggleCsel(event,'filter-status')">
+              <span class="csel-label">Обработанные</span>
+              <span class="material-symbols-outlined csel-arrow">expand_more</span>
+            </button>
+            <div class="csel-menu">
+              <div class="csel-opt selected" data-value="" onclick="pickCsel('filter-status','','Обработанные')">Обработанные</div>
+              <div class="csel-opt" data-value="error" onclick="pickCsel('filter-status','error','С ошибкой')">С ошибкой</div>
+              <div class="csel-opt" data-value="pending" onclick="pickCsel('filter-status','pending','В процессе')">В процессе</div>
+              <div class="csel-opt" data-value="all" onclick="pickCsel('filter-status','all','Все')">Все</div>
+            </div>
+          </div>
+        </div>
+        <div class="w-px self-stretch bg-white/[0.06] mx-1"></div>
+        <div class="flex flex-col gap-2 w-[160px]">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Мин. оценка</span>
+            <span id="score-val" class="text-[10px] font-mono text-primary">0</span>
+          </div>
+          <input id="score-filter" type="range" min="0" max="100" value="0"
+            oninput="document.getElementById('score-val').textContent=this.value"
+            onchange="applyFilters()"
+            class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary"/>
+        </div>
+        <div class="w-px self-stretch bg-white/[0.06] mx-1"></div>
+        <div class="flex items-center gap-3 ml-auto">
+          <span id="results-count" class="text-[11px] text-on-surface-variant"></span>
+          <button onclick="clearFilters()" class="flex items-center gap-2 bg-transparent border border-white/10 text-on-surface-variant px-3 py-[5px] rounded text-xs font-medium hover:border-white/20 hover:text-on-surface transition-colors">
+            <span class="material-symbols-outlined text-sm">filter_list_off</span> Сбросить
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Table -->
+    <section class="flex-1 px-8 py-6">
+      <div class="bg-surface-container rounded-xl overflow-hidden shadow-2xl">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-surface-container-high/50">
+              <th class="py-3 px-4 w-10">
+                <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" class="rounded-sm bg-surface-container-highest border-none focus:ring-primary"/>
+              </th>
+              <th id="th-path" onclick="sortBy('path')" class="py-3 px-4 text-[11px] uppercase tracking-wider text-on-surface-variant font-bold cursor-pointer hover:text-on-surface select-none">Файл</th>
+              <th class="py-3 px-4 text-[11px] uppercase tracking-wider text-on-surface-variant font-bold">Тип</th>
+              <th id="th-value_score" onclick="sortBy('value_score')" class="py-3 px-4 text-[11px] uppercase tracking-wider text-on-surface-variant font-bold cursor-pointer hover:text-on-surface select-none">Оценка ↓</th>
+              <th id="th-category" onclick="sortBy('category')" class="py-3 px-4 text-[11px] uppercase tracking-wider text-on-surface-variant font-bold cursor-pointer hover:text-on-surface select-none">Категория</th>
+              <th class="py-3 px-4 text-[11px] uppercase tracking-wider text-on-surface-variant font-bold text-center">Рекомендация</th>
+              <th class="py-3 px-4 text-[11px] uppercase tracking-wider text-on-surface-variant font-bold">Сводка</th>
+              <th id="th-processed_at" onclick="sortBy('processed_at')" class="py-3 px-4 text-[11px] uppercase tracking-wider text-on-surface-variant font-bold cursor-pointer hover:text-on-surface select-none">Дата</th>
+            </tr>
+          </thead>
+          <tbody id="files-tbody" class="divide-y divide-outline-variant/5">
+            <tr><td colspan="8" class="py-12 text-center text-on-surface-variant text-sm">Загрузка...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Pagination footer -->
+    <footer class="h-14 px-8 flex items-center justify-between glass-header border-t border-white/[0.04]">
+      <div id="pagination-info" class="text-[11px] text-on-surface-variant font-medium"></div>
+      <div id="pagination-controls" class="flex items-center gap-1.5"></div>
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] text-on-surface-variant">Строк:</span>
+        <div class="csel csel-up" id="limit-csel" data-value="50">
+          <button class="csel-btn" type="button" onclick="toggleCsel(event,'limit-csel')">
+            <span class="csel-label">50</span>
+            <span class="material-symbols-outlined csel-arrow">expand_more</span>
+          </button>
+          <div class="csel-menu">
+            <div class="csel-opt" data-value="25" onclick="pickLimitCsel('25')">25</div>
+            <div class="csel-opt selected" data-value="50" onclick="pickLimitCsel('50')">50</div>
+            <div class="csel-opt" data-value="100" onclick="pickLimitCsel('100')">100</div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ── VIEW: SCAN ──────────────────────────────────────────────────────── -->
+  <div id="view-scan" class="view">
+    <header class="fixed top-0 right-0 w-[calc(100%-220px)] h-16 flex items-center px-8 glass-header z-40 border-b border-white/[0.04]">
+      <h2 class="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Сканирование</h2>
+    </header>
+
+    <div class="pt-20 px-8 pb-8 max-w-2xl space-y-5">
+
+      <!-- Launch form -->
+      <div id="scan-form-block" class="bg-surface-container rounded-xl p-6">
+        <h2 class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-5">Новое сканирование</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs text-on-surface-variant block mb-1.5">Директория</label>
+            <div class="flex gap-2">
+              <input id="scan-dir" type="text" placeholder="/Users/..." class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/20 rounded text-sm px-3 py-2.5 text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary/30"/>
+              <button id="browse-btn" onclick="browsePath()" class="flex-shrink-0 flex items-center gap-1.5 bg-surface-container-highest text-on-surface text-xs font-medium px-3 py-2 rounded hover:bg-surface-variant transition-colors whitespace-nowrap">
+                <span class="material-symbols-outlined text-sm">folder_open</span> Выбрать
+              </button>
+            </div>
+            <div id="scan-dir-error" class="hidden mt-1 text-xs text-red-400">Укажите директорию для сканирования</div>
+            <div id="recent-paths" class="hidden mt-2"></div>
+          </div>
+          <div class="space-y-2.5">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" id="opt-standalone-images" checked class="rounded-sm bg-surface-container-highest accent-primary w-4 h-4"/>
+              <span class="text-sm text-on-surface">Обрабатывать файлы-изображения
+                <span class="text-on-surface-variant">(jpg, png, webp…)</span>
+              </span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" id="opt-embedded-images" checked class="rounded-sm bg-surface-container-highest accent-primary w-4 h-4"/>
+              <span class="text-sm text-on-surface">Обрабатывать изображения внутри PDF</span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" id="opt-reprocess" class="rounded-sm bg-surface-container-highest accent-primary w-4 h-4"/>
+              <span class="text-sm text-on-surface">Переобработать файлы с ошибками</span>
+            </label>
+          </div>
+          <div class="pt-1">
+            <span class="text-xs text-on-surface-variant uppercase tracking-widest font-bold block mb-2">Модель</span>
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="radio" name="opt-model" value="qwen3-vl:8b" checked class="w-4 h-4"/>
+                <span class="text-sm text-on-surface font-mono">qwen3-vl:8b</span>
+                <span class="text-xs text-on-surface-variant">основная, мультимодальная</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="radio" name="opt-model" value="gemma3:4b" class="w-4 h-4"/>
+                <span class="text-sm text-on-surface font-mono">gemma3:4b</span>
+                <span class="text-xs text-on-surface-variant">резерв, слабое железо</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <button id="start-scan-btn" onclick="startScan()" class="mt-5 w-full flex items-center justify-center gap-2 bg-primary-container text-on-primary-container font-bold text-sm py-3 rounded hover:opacity-90 active:scale-[0.99] transition-all">
+          <span class="material-symbols-outlined">play_arrow</span> Запустить сканирование
+        </button>
+
+        <!-- Launch error -->
+        <div id="scan-launch-error" class="hidden mt-3 flex items-start gap-2.5 bg-error/10 border border-error/20 rounded-lg px-4 py-3">
+          <span class="material-symbols-outlined text-error text-base flex-shrink-0 mt-0.5">error_outline</span>
+          <span id="scan-launch-error-text" class="text-xs text-error leading-relaxed"></span>
+        </div>
+
+        <!-- Completion state (inline) -->
+        <div id="scan-done-footer" class="hidden mt-4 space-y-3">
+          <div class="flex items-center gap-2 text-primary">
+            <span class="material-symbols-outlined text-xl" style="font-variation-settings:'FILL' 1">check_circle</span>
+            <span class="text-sm font-bold uppercase tracking-wider">Сканирование завершено</span>
+          </div>
+          <div class="flex gap-3">
+            <button onclick="navigate('results')" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-on-primary-container text-xs font-bold py-2.5 rounded hover:opacity-90 transition-opacity">
+              <span class="material-symbols-outlined text-sm">analytics</span> Посмотреть результаты
+            </button>
+            <button id="reprocess-errors-btn" onclick="reprocessErrors()" class="hidden flex-1 flex items-center justify-center gap-2 bg-surface-container-highest text-on-surface text-xs font-medium py-2.5 rounded hover:bg-surface-variant transition-colors">
+              <span class="material-symbols-outlined text-sm">refresh</span> Переобработать ошибки
+            </button>
+          </div>
+          <button onclick="resetScanForm()" class="w-full text-xs text-on-surface-variant hover:text-on-surface transition-colors py-1">
+            + Новое сканирование
+          </button>
+        </div>
+      </div>
+
+      <!-- Active scan -->
+      <div id="scan-active-block" class="hidden bg-surface-container rounded-xl p-6 border border-primary/20">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-primary text-xl spin-slow">progress_activity</span>
+            <span class="text-sm font-bold text-primary uppercase tracking-wider">Идёт сканирование</span>
+          </div>
+          <button onclick="stopScan()" class="flex items-center gap-1 text-xs text-error hover:text-on-surface transition-colors">
+            <span class="material-symbols-outlined text-base">stop_circle</span> Остановить
+          </button>
+        </div>
+        <div class="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Обрабатывается</div>
+        <div id="scan-current-file" class="text-xs font-mono text-on-surface mb-3 truncate">—</div>
+        <div class="h-1.5 bg-surface-container-highest rounded-full overflow-hidden mb-4">
+          <div id="scan-progress-bar" class="h-full bg-primary transition-all duration-500 rounded-full" style="width:0%"></div>
+        </div>
+        <div class="grid grid-cols-4 gap-3 mb-5 text-center">
+          <div><div id="scan-stat-processed" class="text-2xl font-bold font-headline text-primary">0</div><div class="text-[10px] text-on-surface-variant uppercase tracking-wide mt-0.5">Обработано</div></div>
+          <div><div id="scan-stat-skipped"   class="text-2xl font-bold font-headline text-on-surface-variant">0</div><div class="text-[10px] text-on-surface-variant uppercase tracking-wide mt-0.5">Пропущено</div></div>
+          <div><div id="scan-stat-errors"    class="text-2xl font-bold font-headline text-error">0</div><div class="text-[10px] text-on-surface-variant uppercase tracking-wide mt-0.5">Ошибок</div></div>
+          <div><div id="scan-stat-total"     class="text-2xl font-bold font-headline text-on-surface-variant">—</div><div class="text-[10px] text-on-surface-variant uppercase tracking-wide mt-0.5">Всего</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── VIEW: EXPORT ────────────────────────────────────────────────────── -->
+  <div id="view-export" class="view">
+    <header class="fixed top-0 right-0 w-[calc(100%-220px)] h-16 flex items-center px-8 glass-header z-40 border-b border-white/[0.04]">
+      <h2 class="text-xs uppercase tracking-widest text-on-surface-variant font-bold">Экспорт</h2>
+    </header>
+
+    <div class="pt-20 px-8 pb-8 max-w-lg space-y-5">
+      <div class="bg-surface-container rounded-xl p-6">
+        <h2 class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-5">Экспорт результатов</h2>
+
+        <div class="space-y-2 mb-6">
+          <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">Данные для экспорта</div>
+          <label class="export-card">
+            <input type="radio" name="export-filter" value="" checked class="hidden"/>
+            <span class="w-2 h-2 rounded-full flex-shrink-0 bg-on-surface-variant/50"></span>
+            <span class="text-sm text-on-surface flex-1">Все обработанные</span>
+            <span id="export-count-all" class="text-sm font-bold font-mono text-on-surface-variant">—</span>
+          </label>
+          <label class="export-card">
+            <input type="radio" name="export-filter" value="keep" class="hidden"/>
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#3fb950"></span>
+            <span class="text-sm flex-1" style="color:#3fb950">Хранить</span>
+            <span id="export-count-keep" class="text-sm font-bold font-mono" style="color:#3fb950">—</span>
+          </label>
+          <label class="export-card">
+            <input type="radio" name="export-filter" value="archive" class="hidden"/>
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#7dd3fc"></span>
+            <span class="text-sm flex-1" style="color:#7dd3fc">Архив</span>
+            <span id="export-count-archive" class="text-sm font-bold font-mono" style="color:#7dd3fc">—</span>
+          </label>
+          <label class="export-card">
+            <input type="radio" name="export-filter" value="review" class="hidden"/>
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#f0883e"></span>
+            <span class="text-sm flex-1" style="color:#f0883e">На проверку</span>
+            <span id="export-count-review" class="text-sm font-bold font-mono" style="color:#f0883e">—</span>
+          </label>
+          <label class="export-card">
+            <input type="radio" name="export-filter" value="trash_candidate" class="hidden"/>
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#f85149"></span>
+            <span class="text-sm flex-1" style="color:#f85149">Мусор</span>
+            <span id="export-count-trash" class="text-sm font-bold font-mono" style="color:#f85149">—</span>
+          </label>
+        </div>
+
+        <button onclick="downloadExport()" class="w-full flex items-center justify-center gap-2 bg-primary-container text-on-primary-container font-bold text-sm py-3 rounded hover:opacity-90 active:scale-[0.99] transition-all">
+          <span class="material-symbols-outlined text-base">download</span>
+          Скачать результаты
+          <span class="ml-1 text-[10px] font-mono opacity-60 bg-black/20 px-1.5 py-0.5 rounded">CSV</span>
+        </button>
+      </div>
+
+      <div id="export-history" class="hidden bg-surface-container rounded-xl p-5">
+        <div class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-3">История экспортов</div>
+        <div class="text-xs text-on-surface-variant">Загрузка...</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══ DETAIL PANEL ════════════════════════════════════════════════════════ -->
+<div id="detail-panel" class="fixed top-0 right-0 h-screen w-[480px] translate-x-full z-50 flex flex-col overflow-hidden shadow-2xl glass-panel border-l border-white/[0.06]">
+  <div id="detail-content" class="flex-1 overflow-y-auto"></div>
+</div>
+
+<!-- Overlay backdrop -->
+<div id="panel-overlay" onclick="closeDetail()" class="fixed inset-0 bg-black/50 z-40 hidden backdrop-blur-[2px]"></div>
+
+<!-- Change action modal -->
+<div id="action-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeActionModal()"></div>
+  <div class="relative bg-surface-container-high rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5"
+       style="border:1px solid rgba(255,255,255,0.08)">
+    <div class="flex items-center justify-between">
+      <span class="text-sm font-bold text-on-surface uppercase tracking-widest">Изменить рекомендацию</span>
+      <button onclick="closeActionModal()" class="text-on-surface-variant hover:text-on-surface transition-colors">
+        <span class="material-symbols-outlined text-xl">close</span>
+      </button>
+    </div>
+    <div class="flex flex-col gap-4">
+      <div>
+        <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Рекомендация</p>
+        <div class="flex flex-col gap-2" id="action-modal-options">
+          <button data-action="keep" onclick="submitActionModal('action','keep')"
+            class="action-modal-opt flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all"
+            style="border:1px solid rgba(63,185,80,0.25);color:#3fb950">
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#3fb950"></span> Хранить
+          </button>
+          <button data-action="archive" onclick="submitActionModal('action','archive')"
+            class="action-modal-opt flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all"
+            style="border:1px solid rgba(125,211,252,0.25);color:#7dd3fc">
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#7dd3fc"></span> Архив
+          </button>
+          <button data-action="review" onclick="submitActionModal('action','review')"
+            class="action-modal-opt flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all"
+            style="border:1px solid rgba(240,136,62,0.25);color:#f0883e">
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#f0883e"></span> На проверку
+          </button>
+          <button data-action="trash_candidate" onclick="submitActionModal('action','trash_candidate')"
+            class="action-modal-opt flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all"
+            style="border:1px solid rgba(248,81,73,0.25);color:#f85149">
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:#f85149"></span> Мусор
+          </button>
+        </div>
+      </div>
+      <div class="w-full h-px bg-white/[0.06]"></div>
+      <div>
+        <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Категория</p>
+        <div class="grid grid-cols-2 gap-2" id="category-modal-options">
+          <button data-cat="договор" onclick="submitActionModal('category','договор')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">договор</button>
+          <button data-cat="личное" onclick="submitActionModal('category','личное')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">личное</button>
+          <button data-cat="рабочий материал" onclick="submitActionModal('category','рабочий материал')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">рабочий материал</button>
+          <button data-cat="черновик" onclick="submitActionModal('category','черновик')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">черновик</button>
+          <button data-cat="мусор" onclick="submitActionModal('category','мусор')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">мусор</button>
+          <button data-cat="дубликат" onclick="submitActionModal('category','дубликат')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">дубликат</button>
+          <button data-cat="фото-документ" onclick="submitActionModal('category','фото-документ')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">фото-документ</button>
+          <button data-cat="фото-сцена" onclick="submitActionModal('category','фото-сцена')" class="action-modal-opt px-3 py-2 rounded-lg text-xs text-on-surface-variant transition-all text-left" style="border:1px solid rgba(255,255,255,0.08)">фото-сцена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

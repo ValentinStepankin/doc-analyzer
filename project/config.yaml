@@ -1,0 +1,25 @@
+# Directories to scan. Add as many paths as needed.
+scan_paths:
+  - "/Users/valentin.ste/Developer/test\ files"
+
+# Image processing flags (set to false to skip; only file metadata will be saved)
+process_standalone_images: true   # standalone image files: .jpg .jpeg .png .webp .tiff
+process_embedded_images: true     # images embedded inside PDF files
+
+ollama:
+  base_url: "http://localhost:11434"
+  model_name: "qwen3-vl:8b"   # Change to "gemma3:4b" for low-end hardware
+  timeout: 3600                # Seconds to wait for model response (increase if timeouts occur)
+
+chunking:
+  min_size: 3000     # Minimum chunk size in characters
+  max_size: 6000     # Maximum chunk size in characters
+  overlap: 300       # Overlap between consecutive chunks
+
+database:
+  path: "data/index.db"
+
+logging:
+  log_dir: "data/logs"
+  status_file: "data/logs/status.json"
+  summary_interval: 100   # Print summary every N files

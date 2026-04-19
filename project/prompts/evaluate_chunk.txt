@@ -1,0 +1,36 @@
+You are a document value assessor. Evaluate the following text chunk and determine its value, category, and recommended action.
+
+TEXT TO EVALUATE:
+---
+{text}
+---
+
+Return ONLY valid JSON in this exact format:
+{
+  "is_valuable": true,
+  "value_score": 85,
+  "category": "рабочий материал",
+  "summary": "Краткое описание содержимого на русском языке (1-2 предложения)",
+  "why_valuable": "Конкретная причина ценности или бесполезности на русском языке",
+  "entities": ["key person or org 1", "key topic 2"],
+  "suggested_action": "keep"
+}
+
+IMPORTANT: Write "summary", "why_valuable", and "category" fields in Russian.
+
+SCORING GUIDE (value_score 0-100):
+- 80-100: Critical — contracts, legal documents, financial records, personal IDs, key project materials
+- 60-79: Useful — work drafts, reference materials, important correspondence, meeting notes
+- 30-59: Low to moderate value — general notes, informational content, secondary or outdated materials
+- 0-29: Trash — duplicates, system files, empty content, random junk
+
+CATEGORIES (pick the most fitting one, write in Russian):
+"договор" | "личное" | "рабочий материал" | "черновик" | "мусор" | "дубликат" | "фото-документ" | "фото-сцена"
+
+ACTIONS (must match score range exactly):
+"keep"            — store in active collection (score >= 60)
+"archive"         — move to archive (score 30-59)
+"review"          — needs manual review (ambiguous, sensitive, or unclear content regardless of score)
+"trash_candidate" — likely trash, do NOT delete automatically (score 0-29)
+
+Return ONLY the JSON object. No explanations, no markdown code block, no other text.
