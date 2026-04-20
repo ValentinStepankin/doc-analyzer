@@ -115,6 +115,10 @@ def main() -> None:
     if args.no_embedded_images:
         config["process_embedded_images"] = False
 
+    if not config.get("ollama", {}).get("model_name"):
+        print("ОШИБКА: model_name не задан. Передайте --model <имя> или выберите модель в веб-интерфейсе.", file=sys.stderr)
+        sys.exit(1)
+
     scan_paths = config.get("scan_paths", [])
     if not scan_paths:
         print("ОШИБКА: scan_paths не настроен. Отредактируйте config.yaml или передайте пути аргументами.", file=sys.stderr)
@@ -138,8 +142,8 @@ def main() -> None:
 
     logger.info("=" * 60)
     logger.info("doc-analyzer запущен")
-    logger.info("Модель       : %s", config["ollama"]["model_name"])
-    logger.info("Ollama URL   : %s", config["ollama"]["base_url"])
+    logger.info("Модель       : %s", config["ollama"].get("model_name"))
+    logger.info("Ollama URL   : %s", config["ollama"].get("base_url", "http://localhost:11434"))
     logger.info("Фото файлы   : %s", "включены" if config.get("process_standalone_images", True) else "ОТКЛЮЧЕНЫ")
     logger.info("Фото в PDF   : %s", "включены" if config.get("process_embedded_images", True) else "ОТКЛЮЧЕНЫ")
     logger.info("Директории   : %s", scan_paths)

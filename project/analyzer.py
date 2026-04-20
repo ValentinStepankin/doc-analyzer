@@ -45,13 +45,13 @@ def analyze_chunk(text: str, config: dict) -> dict:
     ollama = config["ollama"]
 
     response = requests.post(
-        f"{ollama['base_url']}/api/generate",
+        f"{ollama.get('base_url', 'http://localhost:11434')}/api/generate",
         json={
             "model": ollama["model_name"],
             "prompt": prompt,
             "stream": False,
         },
-        timeout=ollama.get("timeout", 600),
+        timeout=ollama.get("timeout", 3600),
     )
     response.raise_for_status()
     raw = response.json().get("response", "")

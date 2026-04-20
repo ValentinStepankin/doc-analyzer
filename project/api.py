@@ -415,17 +415,22 @@ def browse_directory():
 
         elif system == "Windows":
             # PowerShell + WinForms: нативный диалог Windows
+            # $form.TopMost = $true + ShowDialog($form) — диалог поверх браузера
+            # [Console]::OutputEncoding = UTF8 — корректная передача кириллицы
             ps = (
+                "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
                 "Add-Type -AssemblyName System.Windows.Forms; "
+                "$form = New-Object System.Windows.Forms.Form; "
+                "$form.TopMost = $true; "
                 "$d = New-Object System.Windows.Forms.FolderBrowserDialog; "
                 "$d.Description = 'Выберите папку для сканирования'; "
                 "$d.RootFolder = 'MyComputer'; "
-                "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK)"
+                "if ($d.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK)"
                 " { $d.SelectedPath } else { '' }"
             )
             result = subprocess.run(
                 ["powershell", "-STA", "-NoProfile", "-Command", ps],
-                capture_output=True, text=True, timeout=120,
+                capture_output=True, text=True, timeout=120, encoding="utf-8",
             )
             if result.returncode == 0:
                 path = result.stdout.strip() or None

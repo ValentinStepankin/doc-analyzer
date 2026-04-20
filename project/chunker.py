@@ -12,9 +12,9 @@ import re
 
 IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "tiff", "tif"}
 
-DEFAULT_MIN_SIZE = 1500
-DEFAULT_MAX_SIZE = 3000
-DEFAULT_OVERLAP = 200
+DEFAULT_MIN_SIZE = 3000
+DEFAULT_MAX_SIZE = 6000
+DEFAULT_OVERLAP = 300
 
 
 def chunk(extracted: dict, config: dict) -> list:
