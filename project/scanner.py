@@ -17,7 +17,7 @@ SUPPORTED_EXTENSIONS = {
     # Текстовые файлы
     ".txt", ".md", ".csv", ".html", ".htm",
     # Документы
-    ".pdf", ".docx", ".pptx",
+    ".pdf", ".docx", ".pptx", ".xlsx", ".xls",
     # Изображения
     ".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif",
 }

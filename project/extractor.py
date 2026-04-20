@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 
 TEXT_EXTENSIONS  = {".txt", ".md", ".csv", ".html", ".htm"}
-DOC_EXTENSIONS   = {".pdf", ".docx", ".pptx"}
+DOC_EXTENSIONS   = {".pdf", ".docx", ".pptx", ".xlsx", ".xls"}
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif"}
 
 # Минимальный размер embedded-изображения для обработки (px по каждой стороне).
