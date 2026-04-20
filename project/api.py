@@ -422,11 +422,15 @@ def browse_directory():
                 "Add-Type -AssemblyName System.Windows.Forms; "
                 "$form = New-Object System.Windows.Forms.Form; "
                 "$form.TopMost = $true; "
+                "$form.ShowInTaskbar = $false; "
+                "$form.WindowState = 'Minimized'; "
+                "$form.Show(); "
                 "$d = New-Object System.Windows.Forms.FolderBrowserDialog; "
                 "$d.Description = 'Выберите папку для сканирования'; "
                 "$d.RootFolder = 'MyComputer'; "
                 "if ($d.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK)"
-                " { $d.SelectedPath } else { '' }"
+                " { $d.SelectedPath } else { '' }; "
+                "$form.Dispose()"
             )
             result = subprocess.run(
                 ["powershell", "-STA", "-NoProfile", "-Command", ps],

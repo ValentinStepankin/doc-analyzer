@@ -170,7 +170,7 @@ async function loadOverview() {
 
   // Stat cards
   document.getElementById('stat-cards').innerHTML = [
-    statCard('Всего найдено',  stats.total     ?? status.total_found ?? '—', 'manage_search', '#dfe2eb',
+    statCard('Всего найдено',  (status.current_file ? status.total_found : null) ?? stats.total ?? status.total_found ?? '—', 'manage_search', '#dfe2eb',
       (stats.total ?? status.total_found ?? 0) > 0 ? "goToResults('all')" : null),
     statCard('Обработано',     stats.processed ?? status.processed  ?? '—', 'task_alt',       '#3fb950',
       (stats.processed ?? status.processed ?? 0) > 0 ? "goToResults('')" : null),
