@@ -1,3 +1,5 @@
+/no_think
+
 You are a file value assessor. Evaluate the following text chunk and determine its value, category, and recommended action.
 
 The chunk may be:

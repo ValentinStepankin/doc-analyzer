@@ -23,6 +23,7 @@ IMAGE_EXTENSIONS       = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif"}
 # Минимальный размер embedded-изображения для обработки (px по каждой стороне).
 # Отсеивает иконки, разделители, декоративные элементы.
 _MIN_IMAGE_PX = 100
+_MAX_IMAGES_PER_PDF = 20
 
 
 def extract(file_info: dict, config: dict) -> dict:
@@ -194,9 +195,17 @@ def _extract_pdf_images(path: str, config: dict) -> str:
 
     doc = fitz.open(path)
     blocks = []
+    img_count = 0
+    total_imgs = sum(len(page.get_images(full=False)) for page in doc)
 
     for page_num, page in enumerate(doc, start=1):
+        if img_count >= _MAX_IMAGES_PER_PDF:
+            break
         for img_info in page.get_images(full=False):
+            if img_count >= _MAX_IMAGES_PER_PDF:
+                blocks.append(f"[Показаны первые {_MAX_IMAGES_PER_PDF} из {total_imgs} изображений]")
+                break
+
             xref = img_info[0]
 
             try:
@@ -213,10 +222,8 @@ def _extract_pdf_images(path: str, config: dict) -> str:
                 img_bytes = pix.tobytes("png")
 
             except Exception:
-                # Повреждённое или нечитаемое изображение — пропускаем
                 continue
 
-            # Отправить в Qwen3-VL
             ocr, description = _call_qwen_bytes(img_bytes, config)
 
             if not ocr and not description:
@@ -228,6 +235,7 @@ def _extract_pdf_images(path: str, config: dict) -> str:
             if description:
                 block_lines.append(f"Описание: {description}")
             blocks.append("\n".join(block_lines))
+            img_count += 1
 
     doc.close()
     return "\n\n".join(blocks)
