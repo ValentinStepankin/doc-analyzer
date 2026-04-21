@@ -15,9 +15,10 @@ import json
 import re
 from pathlib import Path
 
-TEXT_EXTENSIONS  = {".txt", ".md", ".csv", ".html", ".htm"}
-DOC_EXTENSIONS   = {".pdf", ".docx", ".pptx", ".xlsx", ".xls"}
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif"}
+TEXT_EXTENSIONS        = {".txt", ".md", ".csv", ".html", ".htm"}
+DOC_EXTENSIONS         = {".pdf", ".docx", ".pptx"}
+SPREADSHEET_EXTENSIONS = {".xlsx", ".xls"}
+IMAGE_EXTENSIONS       = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif"}
 
 # Минимальный размер embedded-изображения для обработки (px по каждой стороне).
 # Отсеивает иконки, разделители, декоративные элементы.
@@ -50,6 +51,9 @@ def extract(file_info: dict, config: dict) -> dict:
 
     if ext in TEXT_EXTENSIONS:
         result["raw_text"] = _read_text(path)
+
+    elif ext in SPREADSHEET_EXTENSIONS:
+        result["raw_text"] = _extract_spreadsheet(path)
 
     elif ext in DOC_EXTENSIONS:
         result["raw_text"] = _extract_with_docling(path)
@@ -102,6 +106,75 @@ def _extract_with_docling(path: str) -> str:
     converter = DocumentConverter()
     result = converter.convert(path)
     return result.document.export_to_markdown()
+
+
+# ---------------------------------------------------------------------------
+# Таблицы: .xlsx → openpyxl, .xls → xlrd
+# ---------------------------------------------------------------------------
+
+_MAX_ROWS_PER_SHEET = 500  # достаточно для понимания содержимого любой таблицы
+
+
+def _extract_spreadsheet(path: str) -> str:
+    ext = Path(path).suffix.lower()
+    if ext == ".xls":
+        return _extract_xls(path)
+    return _extract_xlsx(path)
+
+
+def _extract_xlsx(path: str) -> str:
+    try:
+        import openpyxl
+    except ImportError:
+        raise RuntimeError("openpyxl не установлен. Выполните: pip install openpyxl")
+    try:
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    except Exception:
+        return _extract_with_docling(path)  # повреждённый файл
+    parts = []
+    for sheet in wb.worksheets:
+        rows_text = _rows_to_text(sheet.iter_rows(values_only=True), sheet.max_row)
+        if rows_text:
+            parts.append(f"## {sheet.title}\n{rows_text}")
+    wb.close()
+    return "\n\n".join(parts)
+
+
+def _extract_xls(path: str) -> str:
+    try:
+        import xlrd
+    except ImportError:
+        raise RuntimeError("xlrd не установлен. Выполните: pip install xlrd")
+    try:
+        wb = xlrd.open_workbook(path)
+    except Exception:
+        return _extract_with_docling(path)  # повреждённый файл
+    parts = []
+    for i in range(wb.nsheets):
+        sheet = wb.sheet_by_index(i)
+        rows_iter = (
+            [sheet.cell(rx, cx).value for cx in range(sheet.ncols)]
+            for rx in range(sheet.nrows)
+        )
+        rows_text = _rows_to_text(rows_iter, sheet.nrows)
+        if rows_text:
+            parts.append(f"## {sheet.name}\n{rows_text}")
+    return "\n\n".join(parts)
+
+
+def _rows_to_text(rows_iter, total_rows: int) -> str:
+    result = []
+    counted = 0
+    for row in rows_iter:
+        cells = [str(c).strip() for c in row if c is not None and str(c).strip() not in ("", "None")]
+        if not cells:
+            continue
+        result.append("\t".join(cells))
+        counted += 1
+        if counted >= _MAX_ROWS_PER_SHEET:
+            result.append(f"[... показаны первые {_MAX_ROWS_PER_SHEET} строк из {total_rows} ...]")
+            break
+    return "\n".join(result)
 
 
 # ---------------------------------------------------------------------------
