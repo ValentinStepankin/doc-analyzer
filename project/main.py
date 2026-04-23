@@ -23,6 +23,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -83,11 +84,31 @@ def write_status(status_path: Path, status: dict) -> None:
         pass  # сбой записи статуса не должен ронять основной процесс
 
 
+def _get_resources() -> dict:
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=None)
+        ram = psutil.virtual_memory()
+        return {
+            "cpu_percent":  round(cpu, 1),
+            "ram_used_mb":  round(ram.used  / 1024 / 1024),
+            "ram_total_mb": round(ram.total / 1024 / 1024),
+        }
+    except ImportError:
+        return {}
+
+
 def print_summary(logger: logging.Logger, status: dict) -> None:
+    res = _get_resources()
+    res_str = (
+        f"  |  CPU={res['cpu_percent']}%  "
+        f"RAM={res['ram_used_mb']}MB/{res['ram_total_mb']}MB"
+        if res else ""
+    )
     logger.info(
-        "--- СВОДКА  найдено=%(total_found)s  обработано=%(processed)s  "
-        "пропущено=%(skipped)s  ошибок=%(errors)s ---",
-        status,
+        "--- СВОДКА  найдено=%d  обработано=%d  пропущено=%d  ошибок=%d%s ---",
+        status["total_found"], status["processed"], status["skipped"], status["errors"],
+        res_str,
     )
 
 
@@ -204,6 +225,9 @@ def main() -> None:
                     logger.error("  FAILED  %s  →  %s", path, exc)
                     logger.debug(traceback.format_exc())
                 finally:
+                    res = _get_resources()
+                    if res:
+                        status.update(res)
                     write_status(status_path, status)
 
             # ── ПЕРИОДИЧЕСКАЯ СВОДКА ──────────────────────────────────────
@@ -235,6 +259,7 @@ def _process_file(
     path = file_event["path"]
     image_exts = {"jpg", "jpeg", "png", "webp", "tiff", "tif"}
 
+    t_file = time.time()
     file_id = None
     try:
         # 1. Сохранить метаданные (upsert) — устанавливает status='pending'
@@ -254,7 +279,9 @@ def _process_file(
             return
 
         # 3. Извлечь текст
+        t0 = time.time()
         extracted = extractor.extract(file_event, config)
+        logger.debug("  → извлечение: %.0fs", time.time() - t0)
 
         if not (extracted.get("merged_text") or "").strip():
             logger.warning("  → текст не извлечён, только метаданные")
@@ -275,8 +302,12 @@ def _process_file(
         chunk_results = []
 
         for chunk in chunks:
-            logger.debug("    чанк %d/%d  (%d симв.)", chunk["index"] + 1, len(chunks), len(chunk["text"]))
+            idx   = chunk["index"] + 1
+            total = len(chunks)
+            logger.info("    чанк %d/%d  (%d симв.) — запрос к модели...", idx, total, len(chunk["text"]))
+            t0 = time.time()
             evaluation = analyzer.analyze_chunk(chunk["text"], config)
+            logger.info("    чанк %d/%d  готов за %.0fs", idx, total, time.time() - t0)
             storage.insert_chunk(
                 conn,
                 file_id,
@@ -313,8 +344,11 @@ def _process_file(
             extracted["merged_text"],
         )
 
+        elapsed = time.time() - t_file
+        elapsed_str = f"{int(elapsed // 60)}m{int(elapsed % 60):02d}s" if elapsed >= 60 else f"{elapsed:.0f}s"
         logger.info(
-            "  → score=%-3d  action=%-16s  %s",
+            "  → %s  score=%-3d  action=%-16s  %s",
+            elapsed_str,
             file_result["value_score"],
             file_result["suggested_action"],
             file_result["summary"][:80],
