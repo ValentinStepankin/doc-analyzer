@@ -23,7 +23,8 @@ IMAGE_EXTENSIONS       = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif"}
 # Минимальный размер embedded-изображения для обработки (px по каждой стороне).
 # Отсеивает иконки, разделители, декоративные элементы.
 _MIN_IMAGE_PX = 100
-_MAX_IMAGES_PER_PDF = 20
+_MAX_IMAGES_PER_PDF = 10
+_MAX_PAGES_PER_PDF  = 10
 
 
 def extract(file_info: dict, config: dict) -> dict:
@@ -57,7 +58,10 @@ def extract(file_info: dict, config: dict) -> dict:
         result["raw_text"] = _extract_spreadsheet(path)
 
     elif ext in DOC_EXTENSIONS:
-        result["raw_text"] = _extract_with_docling(path)
+        if ext == ".pdf":
+            result["raw_text"] = _extract_pdf_text(path)
+        else:
+            result["raw_text"] = _extract_with_docling(path)
 
         # Embedded изображения из PDF (другие форматы — в будущем)
         if ext == ".pdf" and config.get("process_embedded_images", True):
@@ -107,6 +111,35 @@ def _extract_with_docling(path: str) -> str:
     converter = DocumentConverter()
     result = converter.convert(path)
     return result.document.export_to_markdown()
+
+
+def _extract_pdf_text(path: str) -> str:
+    """Передаёт в Docling только первые _MAX_PAGES_PER_PDF страниц PDF."""
+    import tempfile, os
+    try:
+        import fitz
+    except ImportError:
+        return _extract_with_docling(path)
+
+    doc = fitz.open(path)
+    page_count = len(doc)
+
+    if page_count <= _MAX_PAGES_PER_PDF:
+        doc.close()
+        return _extract_with_docling(path)
+
+    doc.select(list(range(_MAX_PAGES_PER_PDF)))
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp_path = tmp.name
+        doc.save(tmp_path)
+    doc.close()
+
+    try:
+        text = _extract_with_docling(tmp_path)
+    finally:
+        os.unlink(tmp_path)
+
+    return text + f"\n\n[Показаны первые {_MAX_PAGES_PER_PDF} из {page_count} страниц]"
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +232,8 @@ def _extract_pdf_images(path: str, config: dict) -> str:
     total_imgs = sum(len(page.get_images(full=False)) for page in doc)
 
     for page_num, page in enumerate(doc, start=1):
+        if page_num > _MAX_PAGES_PER_PDF:
+            break
         if img_count >= _MAX_IMAGES_PER_PDF:
             break
         for img_info in page.get_images(full=False):
