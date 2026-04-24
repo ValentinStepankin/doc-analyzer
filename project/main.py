@@ -301,6 +301,9 @@ def _process_file(
         storage.delete_file_chunks(conn, file_id)
         chunk_results = []
 
+        early_exit_threshold = config.get("early_exit_threshold", 75)
+        running_max_score = 0
+
         for chunk in chunks:
             idx   = chunk["index"] + 1
             total = len(chunks)
@@ -319,6 +322,20 @@ def _process_file(
                 evaluation["entities"],
             )
             chunk_results.append(evaluation)
+
+            running_max_score = max(running_max_score, evaluation["value_score"] or 0)
+            action = evaluation["suggested_action"]
+
+            if idx >= 2:
+                if action == "trash_candidate" or (
+                    running_max_score >= early_exit_threshold and action != "review"
+                ):
+                    if idx < total:
+                        logger.info(
+                            "    ↩ ранний выход после %d/%d чанков  (max_score=%d, action=%s)",
+                            idx, total, running_max_score, action,
+                        )
+                    break
 
         # 6. Агрегировать до уровня файла
         file_result = aggregator.aggregate(chunk_results, file_event)

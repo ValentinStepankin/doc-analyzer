@@ -51,7 +51,7 @@ def analyze_chunk(text: str, config: dict) -> dict:
             "prompt": prompt,
             "stream": False,
         },
-        timeout=ollama.get("timeout", 3600),
+        timeout=ollama.get("timeout", 300),
     )
     response.raise_for_status()
     raw = response.json().get("response", "")

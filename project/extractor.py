@@ -25,6 +25,7 @@ IMAGE_EXTENSIONS       = {".jpg", ".jpeg", ".png", ".webp", ".tiff", ".tif"}
 _MIN_IMAGE_PX = 100
 _MAX_IMAGES_PER_PDF = 10
 _MAX_PAGES_PER_PDF  = 10
+_IMAGE_MAX_SIZE = 1280  # max px по длинной стороне перед отправкой в VLM
 
 
 def extract(file_info: dict, config: dict) -> dict:
@@ -287,9 +288,32 @@ def _call_qwen(path: str, config: dict) -> tuple:
     return _call_qwen_bytes(image_bytes, config)
 
 
+def _resize_for_vlm(image_bytes: bytes, max_size: int) -> bytes:
+    """Уменьшает изображение до max_size px по длинной стороне. При ошибке возвращает оригинал."""
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(image_bytes))
+        w, h = img.size
+        if max(w, h) <= max_size:
+            return image_bytes
+        scale = max_size / max(w, h)
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        return buf.getvalue()
+    except Exception:
+        return image_bytes
+
+
 def _call_qwen_bytes(image_bytes: bytes, config: dict) -> tuple:
     """Отправляет изображение (bytes) в Qwen3-VL. Возвращает (ocr_text, image_description)."""
     import requests
+
+    max_size = config.get("image_max_size", _IMAGE_MAX_SIZE)
+    image_bytes = _resize_for_vlm(image_bytes, max_size)
 
     prompt_path = Path(__file__).parent / "prompts" / "describe_image.txt"
     with open(prompt_path, "r", encoding="utf-8") as f:
@@ -306,7 +330,7 @@ def _call_qwen_bytes(image_bytes: bytes, config: dict) -> tuple:
             "images": [image_b64],
             "stream": False,
         },
-        timeout=ollama.get("timeout", 3600),
+        timeout=ollama.get("timeout", 300),
     )
     response.raise_for_status()
 
