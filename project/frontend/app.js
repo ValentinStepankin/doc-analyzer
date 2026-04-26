@@ -571,18 +571,6 @@ function updateBulkActions() {
   }
 }
 
-async function reprocessSelected() {
-  const ids = [...document.querySelectorAll('.row-checkbox:checked')].map(c => c.dataset.id);
-  if (!ids.length) return;
-  const results = await Promise.all(ids.map(id => apiFetch(`/files/${id}/reprocess`, { method: 'POST' }).catch(() => ({}))));
-  const scanStarted = results.some(r => r.scan_started);
-  if (scanStarted) {
-    navigate('scan');
-    startPolling();
-  } else {
-    fetchAndRenderFiles();
-  }
-}
 
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 async function openDetail(id) {
@@ -653,7 +641,7 @@ function detailPanelHTML(f) {
       <div>
         <h3 class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Сводка</h3>
         ${f.status === 'error'
-          ? `<p class="text-sm text-on-surface-variant leading-relaxed italic">При обработке произошла ошибка. Нажмите «Переобработать файл» для повторной попытки.</p>`
+          ? `<p class="text-sm text-on-surface-variant leading-relaxed italic">При обработке произошла ошибка. Запустите сканирование папки повторно для повторной попытки.</p>`
           : f.status === 'pending'
             ? `<p class="text-sm text-on-surface-variant leading-relaxed italic">Файл ещё не обработан — данные появятся после завершения анализа.</p>`
             : `<p class="text-sm text-on-surface leading-relaxed">${esc(f.summary) || '—'}</p>`}
@@ -686,23 +674,7 @@ function detailPanelHTML(f) {
         </div>` : ''}
     </div>
 
-    <!-- Footer actions -->
-    <div class="px-5 py-4 border-t border-outline-variant/10 bg-surface-container-low sticky bottom-0">
-      <button onclick="reprocessFile(${f.id})" class="w-full flex items-center justify-center gap-2 bg-surface-container hover:bg-surface-container-highest text-on-surface text-xs font-medium py-2.5 rounded transition-colors">
-        <span class="material-symbols-outlined text-sm">refresh</span> Переобработать файл
-      </button>
-    </div>`;
-}
-
-async function reprocessFile(id) {
-  const res = await apiFetch(`/files/${id}/reprocess`, { method: 'POST' }).catch(() => ({}));
-  closeDetail();
-  if (res.scan_started) {
-    navigate('scan');
-    startPolling();
-  } else if (state.view === 'results') {
-    fetchAndRenderFiles();
-  }
+  `;
 }
 
 let _actionModalFileId = null;
@@ -856,11 +828,6 @@ function showScanDoneUI(status) {
   if (btn) btn.classList.add('hidden');
   const footer = document.getElementById('scan-done-footer');
   if (footer) footer.classList.remove('hidden');
-  const reprocessBtn = document.getElementById('reprocess-errors-btn');
-  if (reprocessBtn) {
-    if ((status.errors || 0) > 0) reprocessBtn.classList.remove('hidden');
-    else reprocessBtn.classList.add('hidden');
-  }
 }
 
 function resetScanForm() {
@@ -922,7 +889,6 @@ async function startScan() {
     directory:                  dir,
     process_standalone_images:  document.getElementById('opt-standalone-images')?.checked ?? true,
     process_embedded_images:    document.getElementById('opt-embedded-images')?.checked ?? true,
-    reprocess_errors:           document.getElementById('opt-reprocess')?.checked ?? false,
     model_name:                 document.querySelector('input[name="opt-model"]:checked')?.value ?? 'qwen3-vl:8b',
   };
   const btn = document.getElementById('start-scan-btn');
@@ -963,14 +929,6 @@ async function stopScan() {
   }
 }
 
-async function reprocessErrors() {
-  await apiFetch('/scan/reprocess-errors', { method: 'POST' }).catch(() => {});
-  document.getElementById('scan-done-footer')?.classList.add('hidden');
-  const btn = document.getElementById('start-scan-btn');
-  if (btn) btn.classList.remove('hidden');
-  showActiveScanUI({ processed: 0, skipped: 0, errors: 0, total_found: 0, current_file: '...' });
-  startPolling();
-}
 
 // ─── Export View ──────────────────────────────────────────────────────────────
 function loadExport() {
@@ -1058,6 +1016,26 @@ async function checkOllamaStatus() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+function onModelChange(radio) {
+  const isWeak = radio.value === 'gemma3:4b';
+  const cbStandalone = document.getElementById('opt-standalone-images');
+  const cbEmbedded   = document.getElementById('opt-embedded-images');
+  const lblStandalone = cbStandalone?.closest('label');
+  const lblEmbedded   = cbEmbedded?.closest('label');
+
+  if (isWeak) {
+    if (cbStandalone) { cbStandalone.checked = false; cbStandalone.disabled = true; }
+    if (cbEmbedded)   { cbEmbedded.checked   = false; cbEmbedded.disabled   = true; }
+    lblStandalone?.classList.add('opacity-50', 'pointer-events-none', 'cursor-default');
+    lblEmbedded?.classList.add('opacity-50', 'pointer-events-none', 'cursor-default');
+  } else {
+    if (cbStandalone) { cbStandalone.disabled = false; cbStandalone.checked = true; }
+    if (cbEmbedded)   { cbEmbedded.disabled   = false; cbEmbedded.checked   = true; }
+    lblStandalone?.classList.remove('opacity-50', 'pointer-events-none', 'cursor-default');
+    lblEmbedded?.classList.remove('opacity-50', 'pointer-events-none', 'cursor-default');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   navigate('overview');
   checkOllamaStatus();

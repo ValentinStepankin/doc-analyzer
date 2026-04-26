@@ -265,9 +265,6 @@
       </div>
       <div id="bulk-actions" class="hidden items-center gap-3 ml-6">
         <span id="bulk-count" class="text-xs text-on-surface-variant"></span>
-        <button onclick="reprocessSelected()" class="flex items-center gap-1.5 text-xs bg-surface-container px-3 py-1.5 rounded hover:bg-surface-container-highest transition-colors">
-          <span class="material-symbols-outlined text-sm">refresh</span> Переобработать
-        </button>
       </div>
     </header>
 
@@ -446,23 +443,19 @@
               <input type="checkbox" id="opt-embedded-images" checked class="rounded-sm bg-surface-container-highest accent-primary w-4 h-4"/>
               <span class="text-sm text-on-surface">Обрабатывать изображения внутри PDF</span>
             </label>
-            <label class="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" id="opt-reprocess" class="rounded-sm bg-surface-container-highest accent-primary w-4 h-4"/>
-              <span class="text-sm text-on-surface">Переобработать файлы с ошибками</span>
-            </label>
           </div>
           <div class="pt-1">
             <span class="text-xs text-on-surface-variant uppercase tracking-widest font-bold block mb-2">Модель</span>
             <div class="flex flex-col gap-2">
               <label class="flex items-center gap-3 cursor-pointer">
-                <input type="radio" name="opt-model" value="qwen3-vl:8b" checked class="w-4 h-4"/>
+                <input type="radio" name="opt-model" value="qwen3-vl:8b" checked class="w-4 h-4" onchange="onModelChange(this)"/>
                 <span class="text-sm text-on-surface font-mono">qwen3-vl:8b</span>
-                <span class="text-xs text-on-surface-variant">основная, мультимодальная</span>
+                <span class="text-xs text-on-surface-variant">текст + изображения, OCR</span>
               </label>
               <label class="flex items-center gap-3 cursor-pointer">
-                <input type="radio" name="opt-model" value="gemma3:4b" class="w-4 h-4"/>
+                <input type="radio" name="opt-model" value="gemma3:4b" class="w-4 h-4" onchange="onModelChange(this)"/>
                 <span class="text-sm text-on-surface font-mono">gemma3:4b</span>
-                <span class="text-xs text-on-surface-variant">резерв, слабое железо</span>
+                <span class="text-xs text-on-surface-variant">только текст, быстрее</span>
               </label>
             </div>
           </div>
@@ -486,9 +479,6 @@
           <div class="flex gap-3">
             <button onclick="navigate('results')" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-on-primary-container text-xs font-bold py-2.5 rounded hover:opacity-90 transition-opacity">
               <span class="material-symbols-outlined text-sm">analytics</span> Посмотреть результаты
-            </button>
-            <button id="reprocess-errors-btn" onclick="reprocessErrors()" class="hidden flex-1 flex items-center justify-center gap-2 bg-surface-container-highest text-on-surface text-xs font-medium py-2.5 rounded hover:bg-surface-variant transition-colors">
-              <span class="material-symbols-outlined text-sm">refresh</span> Переобработать ошибки
             </button>
           </div>
           <button onclick="resetScanForm()" class="w-full text-xs text-on-surface-variant hover:text-on-surface transition-colors py-1">

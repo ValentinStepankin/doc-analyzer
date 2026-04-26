@@ -322,36 +322,6 @@ def patch_file(file_id: int, body: PatchFileBody):
         conn.close()
 
 
-@app.post("/api/files/{file_id}/reprocess")
-def reprocess_file(file_id: int):
-    global _scan_process
-    if not DB_PATH.exists():
-        raise HTTPException(status_code=404, detail="Database not found")
-
-    conn = get_conn()
-    try:
-        row = conn.execute("SELECT path FROM files WHERE id = ?", (file_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        conn.execute("UPDATE files SET status = 'pending' WHERE id = ?", (file_id,))
-        conn.commit()
-    finally:
-        conn.close()
-
-    # Запустить main.py для директории файла если сканирование не идёт
-    scan_started = False
-    with _scan_lock:
-        if not _scan_running():
-            directory = str(Path(row["path"]).parent)
-            cmd = [sys.executable, str(BASE_DIR / "main.py"), directory]
-            _scan_process = subprocess.Popen(cmd, cwd=str(BASE_DIR))
-            _write_pid(_scan_process.pid)
-            scan_started = True
-
-    return {"ok": True, "scan_started": scan_started}
-
-
 # ─── Search ───────────────────────────────────────────────────────────────────
 
 @app.get("/api/search")
@@ -477,7 +447,6 @@ class ScanStartBody(BaseModel):
     directory:                 str
     process_standalone_images: bool = True
     process_embedded_images:   bool = True
-    reprocess_errors:          bool = False
     model_name:                str  = ""
 
 
@@ -499,9 +468,6 @@ def scan_start(body: ScanStartBody):
             cmd.append("--no-standalone-images")
         if not body.process_embedded_images:
             cmd.append("--no-embedded-images")
-        if body.reprocess_errors:
-            cmd.append("--reprocess-errors")
-
         _scan_process = subprocess.Popen(cmd, cwd=str(BASE_DIR))
         _write_pid(_scan_process.pid)
         _save_recent_path(body.directory)
@@ -527,19 +493,6 @@ def scan_stop():
     if stopped:
         return {"ok": True}
     return {"ok": False, "detail": "No active scan"}
-
-
-@app.post("/api/scan/reprocess-errors")
-def scan_reprocess_errors():
-    global _scan_process
-
-    if _scan_running():
-        raise HTTPException(status_code=409, detail="Scan already running")
-
-    cmd = [sys.executable, str(BASE_DIR / "main.py"), "--reprocess-errors"]
-    _scan_process = subprocess.Popen(cmd, cwd=str(BASE_DIR))
-    _write_pid(_scan_process.pid)
-    return {"ok": True, "pid": _scan_process.pid}
 
 
 # ─── Export ───────────────────────────────────────────────────────────────────

@@ -336,7 +336,7 @@ def _call_qwen_bytes(image_bytes: bytes, config: dict) -> tuple:
             "images": [image_b64],
             "stream": False,
         },
-        timeout=ollama.get("timeout", 300),
+        timeout=ollama.get("timeout", 900),
     )
     response.raise_for_status()
 

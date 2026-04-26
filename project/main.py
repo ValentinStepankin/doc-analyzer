@@ -8,7 +8,6 @@ main.py — оркестратор doc-analyzer.
     python main.py --model gemma3:4b /path     # переопределить модель
     python main.py --no-standalone-images      # пропустить standalone-изображения
     python main.py --no-embedded-images        # пропустить embedded-изображения в PDF
-    python main.py --reprocess-errors          # повторить файлы с ошибками
 
 Пайплайн для каждого файла:
     scanner → extractor → chunker → analyzer → aggregator → storage
@@ -120,11 +119,6 @@ def main() -> None:
     parser.add_argument("--model", default="", help="Переопределить model_name из config.yaml")
     parser.add_argument("--no-standalone-images", action="store_true", help="Отключить обработку standalone-изображений")
     parser.add_argument("--no-embedded-images", action="store_true", help="Отключить обработку embedded-изображений в PDF")
-    parser.add_argument(
-        "--reprocess-errors",
-        action="store_true",
-        help="Повторно обработать файлы, завершившиеся с ошибкой при предыдущем запуске",
-    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -178,10 +172,6 @@ def main() -> None:
     logger.info("=" * 60)
 
     conn = storage.init_db(str(db_path))
-
-    if args.reprocess_errors:
-        n = storage.reset_errors(conn)
-        logger.info("--reprocess-errors: %d файл(ов) сброшено в очередь повторной обработки", n)
 
     logger.info("Подсчёт файлов...")
     total_files = scanner.count_files(scan_paths)
@@ -268,7 +258,12 @@ def _process_file(
     t_file = time.time()
     file_id = None
     try:
-        # 1. Сохранить метаданные (upsert) — устанавливает status='pending'
+        # 1. Standalone-изображения при отключённом флаге → пропустить без записи в БД
+        if file_event["ext"] in image_exts and not config.get("process_standalone_images", True):
+            logger.info("  → обработка standalone-изображений отключена, файл пропущен")
+            return
+
+        # 2. Сохранить метаданные (upsert) — устанавливает status='pending'
         file_id = storage.insert_file_metadata(
             conn,
             path,
@@ -277,12 +272,6 @@ def _process_file(
             file_event["size"],
             file_event["mtime"],
         )
-
-        # 2. Standalone-изображения при отключённом флаге → только метаданные
-        if file_event["ext"] in image_exts and not config.get("process_standalone_images", True):
-            logger.info("  → обработка standalone-изображений отключена, метаданные сохранены")
-            storage.mark_file_ok(conn, file_id)
-            return
 
         # 3. Извлечь текст
         t0 = time.time()
