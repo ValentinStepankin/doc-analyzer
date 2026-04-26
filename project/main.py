@@ -22,6 +22,7 @@ main.py — оркестратор doc-analyzer.
 import argparse
 import json
 import logging
+import shutil
 import sys
 import time
 import traceback
@@ -160,6 +161,11 @@ def main() -> None:
     import extractor
     import scanner
     import storage
+
+    pdf_tmp_dir = BASE_DIR / "data" / "cache" / "pdf_tmp"
+    shutil.rmtree(pdf_tmp_dir, ignore_errors=True)
+    pdf_tmp_dir.mkdir(parents=True, exist_ok=True)
+    extractor.PDF_TMP_DIR = pdf_tmp_dir
 
     logger.info("=" * 60)
     logger.info("doc-analyzer запущен")
