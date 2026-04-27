@@ -278,6 +278,19 @@ def _process_file(
         extracted = extractor.extract(file_event, config)
         logger.debug("  → извлечение: %.0fs", time.time() - t0)
 
+        # PDF, где Docling и PyMuPDF оба не дали текста — только изображение
+        if extracted.get("image_only_pdf"):
+            logger.info("  → PDF содержит только изображения, OCR отключён → review")
+            storage.update_file_result(
+                conn, file_id,
+                "PDF содержит только изображения. OCR отключён — требуется ручная проверка.",
+                None,
+                "фото-документ",
+                "review",
+                "Файл не содержит текстового слоя. Включите обработку изображений для полного анализа.",
+            )
+            return
+
         if not (extracted.get("merged_text") or "").strip():
             logger.warning("  → текст не извлечён, только метаданные")
             storage.mark_file_ok(conn, file_id)

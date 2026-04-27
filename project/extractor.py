@@ -75,6 +75,18 @@ def extract(file_info: dict, config: dict) -> dict:
             if embedded:
                 result["raw_text"] += "\n\n" + embedded
 
+        # Fallback: Docling вернул только <!-- image --> и изображения не дали текста
+        if ext == ".pdf" and re.search(r'<!--\s*image\s*-->', result["raw_text"]):
+            clean = re.sub(r'<!--\s*image\s*-->', '', result["raw_text"]).strip()
+            clean = re.sub(r'\[Показаны первые[^\]]*\]', '', clean).strip()
+            if len(clean) < 50:
+                pymupdf_text = _extract_pymupdf_text(path)
+                if len(pymupdf_text.strip()) >= 50:
+                    result["raw_text"] = pymupdf_text
+                else:
+                    result["image_only_pdf"] = True
+                    result["raw_text"] = ""
+
     elif ext in IMAGE_EXTENSIONS:
         if not config.get("process_standalone_images", True):
             return result  # только метаданные
@@ -117,6 +129,24 @@ def _extract_with_docling(path: str) -> str:
     converter = DocumentConverter()
     result = converter.convert(path)
     return result.document.export_to_markdown()
+
+
+def _extract_pymupdf_text(path: str) -> str:
+    """PyMuPDF fallback: читает текстовый слой напрямую, без Docling."""
+    try:
+        import fitz
+    except ImportError:
+        return ""
+    doc = fitz.open(path)
+    parts = []
+    for i, page in enumerate(doc):
+        if i >= _MAX_PAGES_PER_PDF:
+            break
+        text = page.get_text().strip()
+        if text:
+            parts.append(text)
+    doc.close()
+    return "\n\n".join(parts)
 
 
 def _extract_pdf_text(path: str) -> str:
